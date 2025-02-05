@@ -1,0 +1,24 @@
+{
+  "name": "habita",
+  "version": "1.0.0",
+  "description": "habita: your AI health coach",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.3.1",
+    "@types/node": "^22.13.1",
+    "dotenv": "^16.4.7",
+    "ts-node": "^10.9.2",
+    "twitter-api-v2": "^1.19.1",
+    "typescript": "^5.7.3"
+  },
+  "devDependencies": {
+    "@types/node-cron": "^3.0.11",
+    "prisma": "^6.3.1"
+  }
+}
