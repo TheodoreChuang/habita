@@ -1,6 +1,7 @@
 import { Telegraf, Context } from 'telegraf';
 import { Message } from 'telegraf/typings/core/types/typegram';
 import { z } from 'zod';
+import { EventEmitter } from 'events';
 
 export interface TelegramConfig {
   botToken: string;
@@ -18,10 +19,17 @@ export const MessageSchema = z.object({
 
 export type ParsedMessage = z.infer<typeof MessageSchema>;
 
-export class TelegramService {
+// Define events that TelegramService can emit
+export enum TelegramEvents {
+  MESSAGE_RECEIVED = 'messageReceived',
+  ERROR = 'error'
+}
+
+export class TelegramService extends EventEmitter {
   private bot: Telegraf<Context>;
 
   constructor(config: TelegramConfig) {
+    super();
     this.bot = new Telegraf(config.botToken);
     this.setupErrorHandler();
     this.setupMessageHandler();
@@ -31,6 +39,7 @@ export class TelegramService {
   private setupErrorHandler() {
     this.bot.catch((err) => {
       console.error('Telegraf error:', err);
+      this.emit(TelegramEvents.ERROR, err);
     });
   }
 
@@ -38,8 +47,7 @@ export class TelegramService {
     this.bot.on('text', (ctx) => {
       const parsedMessage = this.convertMessageToParsedMessage(ctx.message);
       if (parsedMessage) {
-        // Process the parsed message as needed
-        console.log('Received message:', parsedMessage);
+        this.emit(TelegramEvents.MESSAGE_RECEIVED, parsedMessage);
       }
     });
   }
@@ -86,5 +94,6 @@ export class TelegramService {
 
   start() {
     this.bot.launch();
+    console.log('Telegram bot started and listening for messages...');
   }
 }
