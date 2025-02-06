@@ -3,6 +3,7 @@
 ## Philosophy & Scope
 
 ### Core Philosophy
+
 - Build healthier habits through consistent, small actions
 - Focus on behavioral change and accountability
 - Supportive and encouraging interaction style
@@ -10,13 +11,15 @@
 - Iterative adjustment based on feedback
 
 ### Key Features
+
 - Initial lifestyle assessment
 - Personalized goal setting
 - Action planning and tracking
-- Regular check-ins via Twitter DMs
+- Regular check-ins via Telegram messages
 - Progress monitoring and adjustments
 
 ### Focus Areas
+
 - Sleep and circadian rhythms
 - Mood and stress management
 - Diet and nutrition
@@ -25,22 +28,23 @@
 ## Technical Architecture
 
 ### Core Components
+
 1. Backend Server
+
    - Node.js with TypeScript
-   - Express.js framework
    - Background services for polling and scheduling
    - Single process architecture
 
 2. Database
+
    - PostgreSQL
-   - Simple relational schema
-   - No vector embeddings
 
 3. External APIs
-   - Twitter API for DM interaction
+   - Telegram Bot API
    - LLM API (e.g., Groq) for response generation
 
 ### Key Libraries
+
 - `twitter-api-v2`: Twitter API client
 - `prisma`: Database ORM
 - `node-cron`: Task scheduling
@@ -48,57 +52,54 @@
 - `dotenv`: Environment configuration
 
 #### Implementation Guidelines
+
 ```typescript
-// Twitter API client
-import { TwitterApi } from 'twitter-api-v2';
-const client = new TwitterApi({
-  appKey: process.env.TWITTER_APP_KEY,
-  appSecret: process.env.TWITTER_APP_SECRET,
-  accessToken: process.env.TWITTER_ACCESS_TOKEN,
-  accessSecret: process.env.TWITTER_ACCESS_SECRET,
-});
+// Telegram Bot setup
+import { Telegraf } from "telegraf";
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 // Prisma setup
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// Scheduling
-import cron from 'node-cron';
-// Poll every 2 minutes
-cron.schedule('*/2 * * * *', () => pollMessages());
-// Daily check-ins at 9 AM
-cron.schedule('0 9 * * *', () => sendCheckIns());
-
 // Type validation
-import { z } from 'zod';
+import { z } from "zod";
 const MessageSchema = z.object({
   id: z.string(),
+  chatId: z.number(),
   text: z.string(),
-  sender_id: z.string(),
-  created_at: z.string()
+  userId: z.number(),
+  userName: z.string().optional(),
+  command: z.string().optional(),
+  timestamp: z.date(),
 });
 ```
 
 ## Entities & States
 
 ### Core Entities
+
 1. Coach (Habita)
-   - System identity
-   - Coaching personality
-   - Response patterns
+    - Bot identity
+    - Coaching personality
+    - Command handlers
+    - Response patterns
 
 2. Coachee
-   - Twitter identity
-   - Current goals
-   - Progress metrics
+
+    - Telegram identity (userId, chatId)
+    - Current goals
+    - Progress metrics
 
 3. Goals
+
    - Category
    - Specific targets
    - Timeline
    - Status and priority
 
 4. Actions
+
    - Specific tasks
    - Frequency
    - Completion status
@@ -108,24 +109,28 @@ const MessageSchema = z.object({
    - Response tracking
    - Progress updates
 
-
 ### Conversation States
+
 1. Initial Discovery
+
    - Personal background
    - Current lifestyle
    - Health priorities
 
 2. Goal Setting
+
    - Category selection
    - Specific goal definition
    - Timeline establishment
 
 3. Action Planning
+
    - Task definition
    - Frequency setting
    - Success criteria
 
 4. Active Coaching
+
    - Regular check-ins
    - Progress tracking
    - Adjustments
@@ -136,55 +141,97 @@ const MessageSchema = z.object({
    - Plan adjustment
 
 #### Conversation States
-```typescript
-type ConversationState = 
-  | 'initial_discovery'
-  | 'goal_setting'
-  | 'action_planning'
-  | 'active_coaching'
-  | 'progress_review';
 
-interface StateHandler {
-  process(message: Message): Promise<Response>;
-  transition(to: ConversationState): Promise<void>;
-  getNextActions(): Promise<Action[]>;
+```typescript
+type ConversationState =
+  | "initial_discovery"
+  | "goal_setting"
+  | "action_planning"
+  | "active_coaching"
+  | "progress_review";
+
+interface Command {
+  name: string;
+  handler: (msg: Message) => Promise<void>;
+  description: string;
 }
+
+const commands: Record<string, Command> = {
+  start: {
+    name: 'start',
+    description: 'Begin your health journey',
+    handler: async (msg) => {/* ... */}
+  },
+  goal: {
+    name: 'goal',
+    description: 'Set a new health goal',
+    handler: async (msg) => {/* ... */}
+  },
+  status: {
+    name: 'status',
+    description: 'Check your progress',
+    handler: async (msg) => {/* ... */}
+  },
+  help: {
+    name: 'help',
+    description: 'Show available commands',
+    handler: async (msg) => {/* ... */}
+  }
+};NextActions(): Promise<Action[]>;
 ```
 
 ## Core Modules
 
 ### Message Handler
-- Polls Twitter DMs
+
+- Polls Telegram
 - Processes incoming messages
 - Manages response queue
 - Handles threading
 
 ```typescript
-class MessagePollingService {
-  private lastPolledId: string;
-  
-  async pollMessages(): Promise<void> {
+class TelegramService {
+  private bot: Telegraf;
+  private lastUpdateId: number = 0;
+
+  constructor(config: TelegramConfig) {
+    this.bot = new Telegraf(config.botToken);
+  }
+
+  async pollUpdates(): Promise<Message[]> {
     try {
-      const messages = await this.twitter.getDirectMessages({
-        since_id: this.lastPolledId
+      const updates = await this.bot.telegram.getUpdates({
+        offset: this.lastUpdateId + 1,
+        limit: 100,
+        timeout: 0
       });
-      
-      for (const msg of messages) {
-        await this.processMessage(msg);
+
+      if (updates.length > 0) {
+        this.lastUpdateId = updates[updates.length - 1].update_id;
+        return this.convertUpdatesToMessages(updates);
       }
-      
-      if (messages.length > 0) {
-        this.lastPolledId = messages[0].id;
-      }
+
+      return [];
     } catch (error) {
       console.error('Polling error:', error);
-      // Implement retry logic
+      return [];
+    }
+  }
+
+  async sendMessage(chatId: number, text: string): Promise<boolean> {
+    try {
+      await this.bot.telegram.sendMessage(chatId, text);
+      return true;
+    } catch (error) {
+      console.error('Send error:', error);
+      return false;
     }
   }
 }
 ```
 
 ### Conversation Manager
+
 - Maintains conversation state
 - Processes user inputs
 - Manages context
@@ -198,15 +245,21 @@ class ConversationManager {
   ) {}
 
   async handleMessage(message: Message): Promise<void> {
+    if (message.command) {
+      await this.handleCommand(message);
+      return;
+    }
+
     const conversation = await this.db.getConversation(message.userId);
     const handler = this.stateHandlers[conversation.state];
     const response = await handler.process(message);
-    await this.sendResponse(response);
+    await this.telegram.sendMessage(message.chatId, response);
   }
 }
 ```
 
 ### Coaching Logic
+
 - Analyzes user inputs
 - Generates recommendations
 - Tracks progress
@@ -220,15 +273,16 @@ class CoachingService {
     const response = await this.llm.complete(prompt);
     return this.parseActions(response);
   }
-  
+
   async evaluateProgress(userId: string): Promise<ProgressReport> {
     const goals = await this.db.getActiveGoals(userId);
-    return goals.map(goal => this.calculateProgress(goal));
+    return goals.map((goal) => this.calculateProgress(goal));
   }
 }
 ```
 
 ### Check-in Manager
+
 - Schedules check-ins
 - Generates reminders
 - Processes responses
@@ -237,6 +291,7 @@ class CoachingService {
 ## Database Schema
 
 ### Database ERD
+
 ```mermaid
 erDiagram
     USERS ||--o{ CONVERSATIONS : has
@@ -295,13 +350,12 @@ erDiagram
     }
 ```
 
-
-
-
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    twitter_id TEXT UNIQUE,
+    telegram_id BIGINT UNIQUE,
+    chat_id BIGINT,
+    username TEXT,
     current_state TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -319,7 +373,7 @@ CREATE TABLE goals (
     user_id INTEGER REFERENCES users,
     category TEXT,
     description TEXT,
-    status TEXT, -- 'active', 'completed', 'abandoned'
+    status TEXT,
     priority INTEGER,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -348,8 +402,8 @@ CREATE TABLE check_ins (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Indexes for common queries
-CREATE INDEX idx_users_twitter_id ON users(twitter_id);
+-- Indexes
+CREATE INDEX idx_users_telegram_id ON users(telegram_id);
 CREATE INDEX idx_goals_user_status ON goals(user_id, status);
 CREATE INDEX idx_progress_action_date ON progress(action_id, recorded_at);
 ```
@@ -357,6 +411,7 @@ CREATE INDEX idx_progress_action_date ON progress(action_id, recorded_at);
 ## Flow Diagrams
 
 ### System Flow
+
 ```mermaid
 flowchart TD
     U[User/Coachee] -->|DM| T[Twitter API]
@@ -371,6 +426,7 @@ flowchart TD
 ```
 
 ### Conversation Flow
+
 ```mermaid
 stateDiagram-v2
     [*] --> InitialDiscovery
@@ -387,25 +443,29 @@ stateDiagram-v2
 ## Implementation Guidelines
 
 ### Project Structure
+
 ```
 src/
 ├── index.ts                 # Application entry point
-├── config/                  # Configuration files
-├── services/               
-│   ├── twitter.ts          # Twitter API integration
-│   ├── llm.ts              # LLM API integration
+├── config/
+│   └── env.ts              # Environment configuration
+├── services/
+│   ├── telegram.ts         # Telegram Bot integration
+│   ├── llm.ts             # LLM API integration
 │   ├── conversation.ts     # Conversation management
 │   └── coaching.ts         # Coaching logic
+├── commands/               # Command handlers
 ├── models/                 # Type definitions
-├── handlers/               # State handlers
-└── utils/                  # Helper functions
+├── handlers/              # State handlers
+└── utils/                 # Helper functions
 ```
 
 ### Error Handling
+
 ```typescript
 // Global error handler
-process.on('unhandledRejection', (error: Error) => {
-  console.error('Unhandled rejection:', error);
+process.on("unhandledRejection", (error: Error) => {
+  console.error("Unhandled rejection:", error);
   // Implement error reporting
 });
 
