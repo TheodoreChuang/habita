@@ -13,6 +13,7 @@ model User {
   chatId        BigInt
   username      String?
   currentState  String?
+  stateData     Json?          @default("{}")
   createdAt     DateTime       @default(now())
   conversations Conversation[]
 
