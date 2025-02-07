@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-
 import { ParsedMessage } from './telegram';
+import { ConversationState } from '../types/states';
 
 export class DatabaseService {
   private prisma: PrismaClient;
@@ -17,8 +17,29 @@ export class DatabaseService {
         telegramId,
         chatId,
         username,
-        currentState: 'initial_discovery'
+        currentState: ConversationState.INITIAL_DISCOVERY,
+        stateData: {}
       }
+    });
+  }
+
+  async updateUserState(
+    userId: string, 
+    state: ConversationState, 
+    stateData?: Record<string, any>
+  ) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { 
+        currentState: state,
+        stateData: stateData || {}
+      }
+    });
+  }
+
+  async getUser(telegramId: bigint) {
+    return this.prisma.user.findUnique({
+      where: { telegramId }
     });
   }
 
@@ -32,11 +53,6 @@ export class DatabaseService {
     });
   }
 
-  async getUser(telegramId: bigint) {
-    return this.prisma.user.findUnique({
-      where: { telegramId }
-    });
-  }
 
   async disconnect() {
     await this.prisma.$disconnect();
