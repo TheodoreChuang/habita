@@ -3,6 +3,8 @@ import { Message } from 'telegraf/typings/core/types/typegram';
 import { z } from 'zod';
 import { EventEmitter } from 'events';
 
+import { DatabaseService } from './database';
+
 export interface TelegramConfig {
   botToken: string;
 }
@@ -27,15 +29,17 @@ export enum TelegramEvents {
 
 export class TelegramService extends EventEmitter {
   private bot: Telegraf<Context>;
+  private db: DatabaseService;
 
-  constructor(config: TelegramConfig) {
+  constructor(config: TelegramConfig, db: DatabaseService) {
     super();
     this.bot = new Telegraf(config.botToken);
+    this.db = db;
     this.setupErrorHandler();
     this.setupMessageHandler();
     this.setupGracefulShutdown();
   }
-
+  
   private setupErrorHandler() {
     this.bot.catch((err) => {
       console.error('Telegraf error:', err);
@@ -43,18 +47,40 @@ export class TelegramService extends EventEmitter {
     });
   }
 
-  private setupMessageHandler() {
-    this.bot.on('text', (ctx) => {
+  private async setupMessageHandler() {
+    this.bot.on('text', async (ctx) => {
       const parsedMessage = this.convertMessageToParsedMessage(ctx.message);
       if (parsedMessage) {
-        this.emit(TelegramEvents.MESSAGE_RECEIVED, parsedMessage);
+        try {
+          // Ensure user exists in database
+          const user = await this.db.createUser(
+            BigInt(parsedMessage.userId),
+            BigInt(parsedMessage.chatId),
+            parsedMessage.userName
+          );
+
+          // Store message in conversation
+          await this.db.storeMessage(user.id, parsedMessage);
+
+          // Emit message for other handlers
+          this.emit(TelegramEvents.MESSAGE_RECEIVED, parsedMessage);
+        } catch (error) {
+          console.error('Error handling message:', error);
+          this.emit(TelegramEvents.ERROR, error);
+        }
       }
     });
   }
 
   private setupGracefulShutdown() {
-    process.once('SIGINT', () => this.bot.stop('SIGINT'));
-    process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
+    process.once('SIGINT', () => {
+      this.bot.stop('SIGINT');
+      this.db.disconnect();
+    });
+    process.once('SIGTERM', () => {
+      this.bot.stop('SIGTERM');
+      this.db.disconnect();
+    });
   }
 
   private extractCommand(text: string): string | undefined {

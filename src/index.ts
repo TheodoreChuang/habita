@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
+
 import { TelegramService, TelegramEvents, ParsedMessage } from './services/telegram';
+import { DatabaseService } from './services/database';
 
 dotenv.config();
 
@@ -8,9 +10,11 @@ async function main() {
     throw new Error('TELEGRAM_BOT_TOKEN is required');
   }
 
-  const telegramService = new TelegramService({
-    botToken: process.env.TELEGRAM_BOT_TOKEN
-  });
+  const db = new DatabaseService();
+  const telegramService = new TelegramService(
+    { botToken: process.env.TELEGRAM_BOT_TOKEN },
+    db
+  );
 
   // Set up event listeners
   telegramService.on(TelegramEvents.MESSAGE_RECEIVED, (message: ParsedMessage) => {
@@ -34,7 +38,6 @@ async function main() {
 
 // Message handlers
 async function handleMessage(telegramService: TelegramService, message: ParsedMessage) {
-  // Echo the message back for now
   await telegramService.sendMessage(message.chatId, `You said: ${message.text}`);
 }
 
