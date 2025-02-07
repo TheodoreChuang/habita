@@ -1,5 +1,17 @@
 # Habita Health Coach - Technical Specification
 
+## Getting Started
+
+```bash
+cp .env.example .env
+
+npm install
+```
+
+```bash
+npm run docker:up
+```
+
 ## Philosophy & Scope
 
 ### Core Philosophy
