@@ -39,6 +39,8 @@ export class DatabaseService {
   }
 
   async getUser(userId?: string) {
+    if (!userId) return null;
+
     return this.prisma.user.findUnique({
       where: { id: userId },
     });
