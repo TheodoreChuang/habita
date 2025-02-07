@@ -63,29 +63,6 @@ npm run docker:up
 - `zod`: Type validation
 - `dotenv`: Environment configuration
 
-#### Implementation Guidelines
-
-```typescript
-// Telegram Bot setup
-import { Telegraf } from "telegraf";
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-
-// Prisma setup
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
-
-// Type validation
-import { z } from "zod";
-const MessageSchema = z.object({
-  id: z.string(),
-  chatId: z.number(),
-  text: z.string(),
-  userId: z.number(),
-  userName: z.string().optional(),
-  command: z.string().optional(),
-  timestamp: z.date(),
-});
-```
 
 ## Entities & States
 
@@ -155,13 +132,6 @@ const MessageSchema = z.object({
 #### Conversation States
 
 ```typescript
-type ConversationState =
-  | "initial_discovery"
-  | "goal_setting"
-  | "action_planning"
-  | "active_coaching"
-  | "progress_review";
-
 interface Command {
   name: string;
   handler: (msg: Message) => Promise<void>;
@@ -201,74 +171,12 @@ const commands: Record<string, Command> = {
 - Manages response queue
 - Handles threading
 
-```typescript
-class TelegramService {
-  private bot: Telegraf;
-  private lastUpdateId: number = 0;
-
-  constructor(config: TelegramConfig) {
-    this.bot = new Telegraf(config.botToken);
-  }
-
-  async pollUpdates(): Promise<Message[]> {
-    try {
-      const updates = await this.bot.telegram.getUpdates({
-        offset: this.lastUpdateId + 1,
-        limit: 100,
-        timeout: 0
-      });
-
-      if (updates.length > 0) {
-        this.lastUpdateId = updates[updates.length - 1].update_id;
-        return this.convertUpdatesToMessages(updates);
-      }
-
-      return [];
-    } catch (error) {
-      console.error('Polling error:', error);
-      return [];
-    }
-  }
-
-  async sendMessage(chatId: number, text: string): Promise<boolean> {
-    try {
-      await this.bot.telegram.sendMessage(chatId, text);
-      return true;
-    } catch (error) {
-      console.error('Send error:', error);
-      return false;
-    }
-  }
-}
-```
-
 ### Conversation Manager
 
 - Maintains conversation state
 - Processes user inputs
 - Manages context
 - Coordinates responses
-
-```typescript
-class ConversationManager {
-  constructor(
-    private stateHandlers: Record<ConversationState, StateHandler>,
-    private db: DatabaseService
-  ) {}
-
-  async handleMessage(message: Message): Promise<void> {
-    if (message.command) {
-      await this.handleCommand(message);
-      return;
-    }
-
-    const conversation = await this.db.getConversation(message.userId);
-    const handler = this.stateHandlers[conversation.state];
-    const response = await handler.process(message);
-    await this.telegram.sendMessage(message.chatId, response);
-  }
-}
-```
 
 ### Coaching Logic
 
@@ -364,7 +272,7 @@ erDiagram
 
 ```sql
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     telegram_id BIGINT UNIQUE,
     chat_id BIGINT,
     username TEXT,
@@ -373,16 +281,16 @@ CREATE TABLE users (
 );
 
 CREATE TABLE conversations (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users,
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users,
     state TEXT,
     messages JSONB[],
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE goals (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users,
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users,
     category TEXT,
     description TEXT,
     status TEXT,
@@ -391,24 +299,24 @@ CREATE TABLE goals (
 );
 
 CREATE TABLE actions (
-    id SERIAL PRIMARY KEY,
-    goal_id INTEGER REFERENCES goals,
+    id TEXT PRIMARY KEY,
+    goal_id TEXT REFERENCES goals,
     description TEXT,
     frequency TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE progress (
-    id SERIAL PRIMARY KEY,
-    action_id INTEGER REFERENCES actions,
+    id TEXT PRIMARY KEY,
+    action_id TEXT REFERENCES actions,
     completed BOOLEAN,
     recorded_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE check_ins (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users,
-    action_id INTEGER REFERENCES actions,
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users,
+    action_id TEXT REFERENCES actions,
     response TEXT,
     sentiment TEXT,
     created_at TIMESTAMP DEFAULT NOW()
