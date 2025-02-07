@@ -2,7 +2,6 @@ import { ParsedMessage } from './telegram';
 import { 
   ConversationState, 
   StateContext, 
-  StateTransitionResult 
 } from '../types/states';
 import { DatabaseService } from './database';
 import { BaseStateHandler } from './state-handler';
@@ -68,19 +67,3 @@ export class ConversationManager extends EventEmitter {
     return (user?.currentState as ConversationState) || ConversationState.INITIAL_DISCOVERY;
   }
 }
-
-// Example state handler implementation
-export class InitialDiscoveryHandler extends BaseStateHandler {
-    async handleMessage(
-      message: ParsedMessage,
-      context: StateContext
-    ): Promise<StateTransitionResult> {
-      // This is a placeholder implementation
-      // We'll flesh this out in the next step
-      return {
-        nextState: ConversationState.INITIAL_DISCOVERY,
-        response: "Welcome! Let's start by learning about your health goals.",
-        stateData: {}
-      };
-    }
-  }
