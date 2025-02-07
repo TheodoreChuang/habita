@@ -1,13 +1,17 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
-import { TelegramService, TelegramEvents, ParsedMessage } from './services/telegram';
-import { DatabaseService } from './services/database';
+import { DatabaseService } from "./services/database";
+import {
+  TelegramService,
+  TelegramEvents,
+  ParsedMessage,
+} from "./services/telegram";
 
 dotenv.config();
 
 async function main() {
   if (!process.env.TELEGRAM_BOT_TOKEN) {
-    throw new Error('TELEGRAM_BOT_TOKEN is required');
+    throw new Error("TELEGRAM_BOT_TOKEN is required");
   }
 
   const db = new DatabaseService();
@@ -17,48 +21,60 @@ async function main() {
   );
 
   // Set up event listeners
-  telegramService.on(TelegramEvents.MESSAGE_RECEIVED, (message: ParsedMessage) => {
-    console.log('Received message in main:', message);
-    
-    // Handle different types of messages
-    if (message.command) {
-      handleCommand(telegramService, message);
-    } else {
-      handleMessage(telegramService, message);
+  telegramService.on(
+    TelegramEvents.MESSAGE_RECEIVED,
+    (message: ParsedMessage) => {
+      console.log("Received message in main:", message);
+
+      // Handle different types of messages
+      if (message.command) {
+        handleCommand(telegramService, message);
+      } else {
+        handleMessage(telegramService, message);
+      }
     }
-  });
+  );
 
   telegramService.on(TelegramEvents.ERROR, (error: Error) => {
-    console.error('Error in main:', error);
+    console.error("Error in main:", error);
   });
 
-  console.log('Starting Telegram service...');
+  console.log("Starting Telegram service...");
   telegramService.start();
 }
 
 // Message handlers
-async function handleMessage(telegramService: TelegramService, message: ParsedMessage) {
-  await telegramService.sendMessage(message.chatId, `You said: ${message.text}`);
+async function handleMessage(
+  telegramService: TelegramService,
+  message: ParsedMessage
+) {
+  await telegramService.sendMessage(
+    message.chatId,
+    `You said: ${message.text}`
+  );
 }
 
-async function handleCommand(telegramService: TelegramService, message: ParsedMessage) {
+async function handleCommand(
+  telegramService: TelegramService,
+  message: ParsedMessage
+) {
   switch (message.command) {
-    case 'start':
+    case "start":
       await telegramService.sendMessage(
         message.chatId,
-        'Welcome to Habita Health Coach! I\'m here to help you build better health habits.'
+        "Welcome to Habita Health Coach! I'm here to help you build better health habits."
       );
       break;
-    case 'help':
+    case "help":
       await telegramService.sendMessage(
         message.chatId,
-        'Available commands:\n/start - Begin your health journey\n/help - Show this message'
+        "Available commands:\n/start - Begin your health journey\n/help - Show this message"
       );
       break;
     default:
       await telegramService.sendMessage(
         message.chatId,
-        'Unknown command. Type /help to see available commands.'
+        "Unknown command. Type /help to see available commands."
       );
   }
 }

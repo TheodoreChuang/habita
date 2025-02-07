@@ -8,14 +8,17 @@ import {
 } from "../types/states";
 import { DatabaseService } from "./database";
 
+// Base class that all state handlers must extend
 export abstract class BaseStateHandler {
   constructor(protected db: DatabaseService) {}
 
+  // Abstract method that each state handler must implement
   abstract handleMessage(
     message: ParsedMessage,
     context: StateContext
   ): Promise<StateTransitionResult>;
 
+  // Helper method to update user state in database
   protected async updateUserState(
     userId: string,
     state: ConversationState
@@ -24,15 +27,42 @@ export abstract class BaseStateHandler {
   }
 }
 
+// Example of a concrete state handler
 export class InitialDiscoveryHandler extends BaseStateHandler {
   async handleMessage(
     message: ParsedMessage,
     context: StateContext
   ): Promise<StateTransitionResult> {
+    const stateData = (context.stateData as JsonObject) || {};
+    if (stateData?.hasAskedName) {
+      return {
+        nextState: ConversationState.INITIAL_DISCOVERY,
+        response: "Hi! What's your name?",
+        stateData: { hasAskedName: true },
+      };
+    }
+
+    // If we're waiting for the name
+    if (stateData?.hasAskedName && stateData?.name) {
+      return {
+        nextState: ConversationState.INITIAL_DISCOVERY,
+        response: `Nice to meet you, ${message.text}! What are your main health goals?`,
+        stateData: {
+          ...stateData,
+          name: message.text,
+          hasAskedGoals: true,
+        },
+      };
+    }
+
+    // Move to goal setting when ready
     return {
-      nextState: ConversationState.INITIAL_DISCOVERY,
-      response: "Welcome! Let's start by learning about your health goals.",
-      stateData: {},
+      nextState: ConversationState.GOAL_SETTING,
+      response: "Great! Let's set some specific goals.",
+      stateData: {
+        ...stateData,
+        initialGoals: message.text,
+      },
     };
   }
 }

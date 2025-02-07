@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { ParsedMessage } from './telegram';
+
 import { ConversationState } from '../types/states';
+import { ParsedMessage } from './telegram';
 
 export class DatabaseService {
   private prisma: PrismaClient;
