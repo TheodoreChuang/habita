@@ -210,3 +210,191 @@ export class ActionPlanningHandler extends BaseStateHandler {
     };
   }
 }
+
+export class ActiveCoachingHandler extends BaseStateHandler {
+  async handleMessage(
+    message: ParsedMessage,
+    context: StateContext
+  ): Promise<StateTransitionResult> {
+    const stateData = (context.stateData as JsonObject) || {};
+
+    // Handle check-in responses
+    if (!stateData.lastCheckIn) {
+      return {
+        nextState: ConversationState.ACTIVE_COACHING,
+        response:
+          "How did you do with your action step today? Did you complete it as planned?",
+        stateData: {
+          ...stateData,
+          lastCheckIn: new Date().toISOString(),
+          hasAskedCompletion: true,
+        },
+      };
+    }
+
+    // Process completion response
+    if (stateData.hasAskedCompletion && !stateData.completionResponse) {
+      const response = message.text.toLowerCase();
+      if (
+        response.includes("yes") ||
+        response.includes("done") ||
+        response.includes("complete")
+      ) {
+        return {
+          nextState: ConversationState.ACTIVE_COACHING,
+          response:
+            "Great job! How difficult was it on a scale of 1-5? (1 being very easy, 5 being very difficult)",
+          stateData: {
+            ...stateData,
+            completionResponse: true,
+            hasAskedDifficulty: true,
+            successCount: Number(stateData.successCount || 0) + 1,
+          },
+        };
+      } else {
+        return {
+          nextState: ConversationState.ACTIVE_COACHING,
+          response:
+            "What got in the way? Understanding obstacles helps us adjust the plan.",
+          stateData: {
+            ...stateData,
+            completionResponse: false,
+            hasAskedObstacles: true,
+          },
+        };
+      }
+    }
+
+    // Process difficulty rating or obstacles
+    if (
+      (stateData.hasAskedDifficulty || stateData.hasAskedObstacles) &&
+      !stateData.dailyReflection
+    ) {
+      const successCount = Number(stateData.successCount || 0);
+
+      // Check if we should move to progress review
+      if (successCount >= 7) {
+        // After a week of tracking
+        return {
+          nextState: ConversationState.PROGRESS_REVIEW,
+          response:
+            "You've been working on this goal for a week now. Let's review your progress!",
+          stateData: {
+            ...stateData,
+            dailyReflection: message.text,
+            readyForReview: true,
+          },
+        };
+      }
+
+      // Continue with daily coaching
+      return {
+        nextState: ConversationState.ACTIVE_COACHING,
+        response:
+          "Thanks for sharing. I'll check in with you again tomorrow. Keep up the good work!",
+        stateData: {
+          ...stateData,
+          dailyReflection: message.text,
+          nextCheckIn: new Date(Date.now() + 24 * 60 * 60 * 1000), // Next day
+        },
+      };
+    }
+
+    // Default response
+    return {
+      nextState: ConversationState.ACTIVE_COACHING,
+      response: "Keep working on your goal. I'm here to support you!",
+      stateData,
+    };
+  }
+}
+
+export class ProgressReviewHandler extends BaseStateHandler {
+  async handleMessage(
+    message: ParsedMessage,
+    context: StateContext
+  ): Promise<StateTransitionResult> {
+    const stateData = (context.stateData as JsonObject) || {};
+
+    // Initial progress review
+    if (!stateData.hasStartedReview) {
+      return {
+        nextState: ConversationState.PROGRESS_REVIEW,
+        response:
+          "Looking back at your goal, how satisfied are you with your progress on a scale of 1-10?",
+        stateData: {
+          ...stateData,
+          hasStartedReview: true,
+          hasAskedSatisfaction: true,
+        },
+      };
+    }
+
+    // Process satisfaction rating
+    if (stateData.hasAskedSatisfaction && !stateData.satisfactionRating) {
+      return {
+        nextState: ConversationState.PROGRESS_REVIEW,
+        response:
+          "What's been working well for you? What habits or strategies have been most helpful?",
+        stateData: {
+          ...stateData,
+          satisfactionRating: parseInt(message.text) || 0,
+          hasAskedSuccesses: true,
+        },
+      };
+    }
+
+    // Process successes
+    if (stateData.hasAskedSuccesses && !stateData.successFactors) {
+      return {
+        nextState: ConversationState.PROGRESS_REVIEW,
+        response:
+          "What could we adjust to make even more progress? Would you like to modify your goal or set a new one?",
+        stateData: {
+          ...stateData,
+          successFactors: message.text,
+          hasAskedAdjustments: true,
+        },
+      };
+    }
+
+    // Process adjustments and transition
+    if (stateData.hasAskedAdjustments) {
+      const response = message.text.toLowerCase();
+      if (
+        response.includes("new goal") ||
+        response.includes("different") ||
+        response.includes("change")
+      ) {
+        return {
+          nextState: ConversationState.GOAL_SETTING,
+          response:
+            "Let's set a new goal! Which area would you like to focus on: sleep, stress, exercise, or diet?",
+          stateData: {
+            ...stateData,
+            previousGoalCompleted: true,
+            adjustments: message.text,
+          },
+        };
+      } else {
+        return {
+          nextState: ConversationState.ACTION_PLANNING,
+          response:
+            "Great! Let's adjust your action plan. What's one small step you could take tomorrow toward your adjusted goal?",
+          stateData: {
+            ...stateData,
+            adjustments: message.text,
+            hasAdjustedGoal: true,
+          },
+        };
+      }
+    }
+
+    // Default response
+    return {
+      nextState: ConversationState.GOAL_SETTING,
+      response: "Would you like to set a new goal or adjust your current one?",
+      stateData,
+    };
+  }
+}
