@@ -7,9 +7,14 @@ import {
   StateTransitionResult,
 } from "../types/states";
 import { DatabaseService } from "./database";
+import { GroqService } from "./groq";
 
 export abstract class BaseStateHandler {
-  constructor(protected db: DatabaseService) {}
+  groqService: GroqService;
+
+  constructor(protected db: DatabaseService) {
+    this.groqService = new GroqService(db);
+  }
 
   abstract handleMessage(
     message: ParsedMessage,
@@ -32,7 +37,21 @@ export class InitialDiscoveryHandler extends BaseStateHandler {
   ): Promise<StateTransitionResult> {
     const stateData = (context.stateData as JsonObject) || {};
 
-    // Initial greeting
+    // Use the LLM to validate the user's input
+    const validationResponse = await this.groqService.validateInput(
+      context.userId,
+      message.text,
+      context.currentState
+    );
+
+    if (!validationResponse.isValid) {
+      return {
+        nextState: context.currentState, // Stay in the same state
+        response: validationResponse.feedback, // Use the LLM's feedback
+        stateData,
+      };
+    }
+
     if (!stateData.hasStarted) {
       return {
         nextState: ConversationState.INITIAL_DISCOVERY,
@@ -94,6 +113,21 @@ export class GoalSettingHandler extends BaseStateHandler {
     context: StateContext
   ): Promise<StateTransitionResult> {
     const stateData = (context.stateData as JsonObject) || {};
+
+    // Use the LLM to validate the user's input
+    const validationResponse = await this.groqService.validateInput(
+      context.userId,
+      message.text,
+      context.currentState
+    );
+
+    if (!validationResponse.isValid) {
+      return {
+        nextState: context.currentState, // Stay in the same state
+        response: validationResponse.feedback, // Use the LLM's feedback
+        stateData,
+      };
+    }
 
     // Initial goal area selection
     if (!stateData.goalArea) {
@@ -160,6 +194,21 @@ export class ActionPlanningHandler extends BaseStateHandler {
   ): Promise<StateTransitionResult> {
     const stateData = (context.stateData as JsonObject) || {};
 
+    // Use the LLM to validate the user's input
+    const validationResponse = await this.groqService.validateInput(
+      context.userId,
+      message.text,
+      context.currentState
+    );
+
+    if (!validationResponse.isValid) {
+      return {
+        nextState: context.currentState, // Stay in the same state
+        response: validationResponse.feedback, // Use the LLM's feedback
+        stateData,
+      };
+    }
+
     // Initial action step
     if (!stateData.initialAction) {
       return {
@@ -217,6 +266,21 @@ export class ActiveCoachingHandler extends BaseStateHandler {
     context: StateContext
   ): Promise<StateTransitionResult> {
     const stateData = (context.stateData as JsonObject) || {};
+
+    // Use the LLM to validate the user's input
+    const validationResponse = await this.groqService.validateInput(
+      context.userId,
+      message.text,
+      context.currentState
+    );
+
+    if (!validationResponse.isValid) {
+      return {
+        nextState: context.currentState, // Stay in the same state
+        response: validationResponse.feedback, // Use the LLM's feedback
+        stateData,
+      };
+    }
 
     // Handle check-in responses
     if (!stateData.lastCheckIn) {
@@ -315,6 +379,21 @@ export class ProgressReviewHandler extends BaseStateHandler {
     context: StateContext
   ): Promise<StateTransitionResult> {
     const stateData = (context.stateData as JsonObject) || {};
+
+    // Use the LLM to validate the user's input
+    const validationResponse = await this.groqService.validateInput(
+      context.userId,
+      message.text,
+      context.currentState
+    );
+
+    if (!validationResponse.isValid) {
+      return {
+        nextState: context.currentState, // Stay in the same state
+        response: validationResponse.feedback, // Use the LLM's feedback
+        stateData,
+      };
+    }
 
     // Initial progress review
     if (!stateData.hasStartedReview) {

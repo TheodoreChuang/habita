@@ -20,7 +20,7 @@ export class ConversationManager extends EventEmitter {
   constructor(private db: DatabaseService) {
     super();
     this.stateHandlers = new Map();
-    this.groqService = new GroqService();
+    this.groqService = new GroqService(db);
 
     // Register handlers
     this.stateHandlers.set(
@@ -70,34 +70,45 @@ export class ConversationManager extends EventEmitter {
       let responseText = "";
 
       if (handler) {
-        const result = await handler.handleMessage(message, context);
-        if (result.nextState !== context.currentState || result.stateData) {
-          context = {
-            ...context,
-            currentState: result.nextState,
-            stateData: result.stateData || context.stateData,
-          };
-          await this.db.updateUserState(
-            message.internalUserId,
-            result.nextState,
-            context.stateData
-          );
+        // Use the LLM to validate the user's input
+        const validationResponse = await this.groqService.validateInput(
+          context.userId,
+          message.text,
+          context.currentState
+        );
+
+        if (validationResponse.isValid) {
+          const result = await handler.handleMessage(message, context);
+          if (result.nextState !== context.currentState || result.stateData) {
+            context = {
+              ...context,
+              currentState: result.nextState,
+              stateData: result.stateData || context.stateData,
+            };
+            await this.db.updateUserState(
+              message.internalUserId,
+              result.nextState,
+              context.stateData
+            );
+          }
+          responseText = result.response;
+
+          this.db.storeMessage(context.userId, {
+            ...message,
+            userName: "Habita",
+            text: result.response,
+          });
+        } else {
+          // If the input is invalid, use the LLM's suggested response
+          responseText = validationResponse.feedback;
         }
-        responseText = result.response;
       }
 
-      // If no predefined response or user input is unexpected, use Groq
-      if (!responseText || message.text.toLowerCase() === "ask ai") {
-        responseText = await this.groqService.generateResponse([
-          { role: "system", content: "You are a helpful health coach." },
-          { role: "user", content: message.text },
-        ]);
-      }
-
+      // Emit the state transition with the response
       this.emit("stateTransition", {
         userId: message.internalUserId,
         fromState: initialState,
-        toState: context.currentState, // FIXME? // result.nextState,
+        toState: context.currentState,
         message: responseText,
         chatId: message.chatId,
       });

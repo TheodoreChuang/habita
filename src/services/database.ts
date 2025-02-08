@@ -39,6 +39,29 @@ export class DatabaseService {
     });
   }
 
+  async getConversationMessages(userId: string) {
+    const conversations = await this.prisma.conversation.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Extract messages from all conversations
+    const messages = conversations
+      .filter(
+        (conversation) =>
+          typeof conversation === "object" &&
+          conversation !== null &&
+          "text" in conversation &&
+          "userName" in conversation
+      )
+      .map((msg) => ({
+        userName: (msg as { userName: string }).userName,
+        content: (msg as { text: string }).text,
+      }));
+
+    return messages;
+  }
+
   async getUser(userId?: string) {
     if (!userId) return null;
 
