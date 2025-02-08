@@ -63,22 +63,22 @@ npm run docker:up
 - `zod`: Type validation
 - `dotenv`: Environment configuration
 
-
 ## Entities & States
 
 ### Core Entities
 
 1. Coach (Habita)
-    - Bot identity
-    - Coaching personality
-    - Command handlers
-    - Response patterns
+
+   - Bot identity
+   - Coaching personality
+   - Command handlers
+   - Response patterns
 
 2. Coachee
 
-    - Telegram identity (userId, chatId)
-    - Current goals
-    - Progress metrics
+   - Telegram identity (userId, chatId)
+   - Current goals
+   - Progress metrics
 
 3. Goals
 
@@ -366,18 +366,18 @@ stateDiagram-v2
 
 ```
 src/
-├── index.ts                 # Application entry point
+├── index.ts                # Application entry point
 ├── config/
 │   └── env.ts              # Environment configuration
 ├── services/
 │   ├── telegram.ts         # Telegram Bot integration
-│   ├── llm.ts             # LLM API integration
+│   ├── groq.ts              # Groq (LLM API) integration
 │   ├── conversation.ts     # Conversation management
 │   └── coaching.ts         # Coaching logic
 ├── commands/               # Command handlers
 ├── models/                 # Type definitions
-├── handlers/              # State handlers
-└── utils/                 # Helper functions
+├── handlers/               # State handlers
+└── utils/                  # Helper functions
 ```
 
 ### Error Handling

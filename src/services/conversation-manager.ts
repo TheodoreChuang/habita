@@ -3,6 +3,7 @@ import { JsonObject } from "@prisma/client/runtime/library";
 
 import { ConversationState, StateContext } from "../types/states";
 import { DatabaseService } from "./database";
+import { GroqService } from "./groq";
 import { ParsedMessage } from "./telegram";
 import {
   BaseStateHandler,
@@ -14,12 +15,13 @@ import {
 } from "./state-handler";
 
 export class ConversationManager extends EventEmitter {
-  // Map to store state handlers
   private stateHandlers: Map<ConversationState, BaseStateHandler>;
+  private groqService: GroqService;
 
   constructor(private db: DatabaseService) {
     super();
     this.stateHandlers = new Map();
+    this.groqService = new GroqService();
 
     this.stateHandlers.set(
       ConversationState.INITIAL_DISCOVERY,
@@ -43,11 +45,6 @@ export class ConversationManager extends EventEmitter {
     );
   }
 
-  // Method to register handlers for different states
-  registerHandler(state: ConversationState, handler: BaseStateHandler) {
-    this.stateHandlers.set(state, handler);
-  }
-
   // Main method to process incoming messages
   async handleMessage(message: ParsedMessage): Promise<void> {
     try {
@@ -65,29 +62,36 @@ export class ConversationManager extends EventEmitter {
 
       // Get handler for current state
       const handler = this.stateHandlers.get(context.currentState);
-      if (!handler) {
-        throw new Error(`No handler found for state: ${context.currentState}`);
+      let responseText = "";
+
+      if (handler) {
+        // Process message with handler
+        const result = await handler.handleMessage(message, context);
+
+        // Update state if changed
+        if (result.nextState !== context.currentState) {
+          await this.db.updateUserState(
+            message.internalUserId,
+            result.nextState,
+            result.stateData
+          );
+        }
+        responseText = result.response;
+      } else {
+        // If no handler exists, use GroqService to generate a response
+        responseText = await this.groqService.generateResponse([
+          { role: "system", content: "You are a helpful health coach." },
+          { role: "user", content: message.text },
+        ]);
       }
 
-      // Process message with handler
-      const result = await handler.handleMessage(message, context);
-
-      // Update state if changed
-      if (result.nextState !== context.currentState) {
-        await this.db.updateUserState(
-          message.internalUserId,
-          result.nextState,
-          result.stateData
-        );
-      }
-
-      // Emit state transition event with chatId
+      // Emit state transition event
       this.emit("stateTransition", {
         userId: message.internalUserId,
         fromState: context.currentState,
-        toState: result.nextState,
-        message: result.response,
-        chatId: message.chatId, // Include this for direct message sending
+        toState: context.currentState, // FIXME? // result.nextState,
+        message: responseText,
+        chatId: message.chatId,
       });
     } catch (error) {
       console.error("Error in conversation manager:", error);
