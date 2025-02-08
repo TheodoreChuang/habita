@@ -1,5 +1,4 @@
 import { EventEmitter } from "events";
-import { JsonObject } from "@prisma/client/runtime/library";
 
 import { ConversationState, StateContext } from "../types/states";
 import { DatabaseService } from "./database";
@@ -23,6 +22,7 @@ export class ConversationManager extends EventEmitter {
     this.stateHandlers = new Map();
     this.groqService = new GroqService();
 
+    // Register handlers
     this.stateHandlers.set(
       ConversationState.INITIAL_DISCOVERY,
       new InitialDiscoveryHandler(db)
@@ -45,30 +45,31 @@ export class ConversationManager extends EventEmitter {
     );
   }
 
-  // Main method to process incoming messages
   async handleMessage(message: ParsedMessage): Promise<void> {
+    if (!message.internalUserId) {
+      throw new Error("Internal user ID is required");
+    }
+
     try {
-      if (!message.internalUserId) {
-        throw new Error("Internal user ID is required");
+      const user = await this.db.getUser(message.internalUserId);
+      if (!user) {
+        throw new Error("User not found");
       }
 
-      // Create context for current state
       const context: StateContext = {
-        userId: message.internalUserId, // Use the internal UUID
+        userId: message.internalUserId,
         chatId: message.chatId,
-        currentState: await this.getCurrentState(message.internalUserId),
-        stateData: await this.getUserStateData(message.internalUserId),
+        currentState:
+          (user.currentState as ConversationState) ||
+          ConversationState.INITIAL_DISCOVERY,
+        stateData: user.stateData,
       };
 
-      // Get handler for current state
       const handler = this.stateHandlers.get(context.currentState);
       let responseText = "";
 
       if (handler) {
-        // Process message with handler
         const result = await handler.handleMessage(message, context);
-
-        // Update state if changed
         if (result.nextState !== context.currentState) {
           await this.db.updateUserState(
             message.internalUserId,
@@ -77,15 +78,16 @@ export class ConversationManager extends EventEmitter {
           );
         }
         responseText = result.response;
-      } else {
-        // If no handler exists, use GroqService to generate a response
+      }
+
+      // If no predefined response or user input is unexpected, use Groq
+      if (!responseText || message.text.toLowerCase() === "ask ai") {
         responseText = await this.groqService.generateResponse([
           { role: "system", content: "You are a helpful health coach." },
           { role: "user", content: message.text },
         ]);
       }
 
-      // Emit state transition event
       this.emit("stateTransition", {
         userId: message.internalUserId,
         fromState: context.currentState,
@@ -97,20 +99,5 @@ export class ConversationManager extends EventEmitter {
       console.error("Error in conversation manager:", error);
       this.emit("error", error);
     }
-  }
-
-  // Helper to get current state
-  async getCurrentState(userId: string): Promise<ConversationState> {
-    const user = await this.db.getUser(userId);
-    return (
-      (user?.currentState as ConversationState) ||
-      ConversationState.INITIAL_DISCOVERY
-    );
-  }
-
-  // Helper to get user data
-  async getUserStateData(userId: string): Promise<JsonObject> {
-    const user = await this.db.getUser(userId);
-    return (user?.stateData as JsonObject) || {};
   }
 }
