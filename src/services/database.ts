@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { JsonValue } from "@prisma/client/runtime/library";
 
 import { ConversationState } from "../types/states";
 import { ParsedMessage } from "./telegram";
@@ -27,7 +28,7 @@ export class DatabaseService {
   async updateUserState(
     userId: string,
     state: ConversationState,
-    stateData?: Record<string, any>
+    stateData?: JsonValue
   ) {
     return this.prisma.user.update({
       where: { id: userId },

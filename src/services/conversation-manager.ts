@@ -55,14 +55,15 @@ export class ConversationManager extends EventEmitter {
       if (!user) {
         throw new Error("User not found");
       }
+      const initialState =
+        (user.currentState as ConversationState) ||
+        ConversationState.INITIAL_DISCOVERY;
 
-      const context: StateContext = {
+      let context: StateContext = {
         userId: message.internalUserId,
         chatId: message.chatId,
-        currentState:
-          (user.currentState as ConversationState) ||
-          ConversationState.INITIAL_DISCOVERY,
-        stateData: user.stateData,
+        currentState: initialState,
+        stateData: user.stateData || {},
       };
 
       const handler = this.stateHandlers.get(context.currentState);
@@ -70,11 +71,16 @@ export class ConversationManager extends EventEmitter {
 
       if (handler) {
         const result = await handler.handleMessage(message, context);
-        if (result.nextState !== context.currentState) {
+        if (result.nextState !== context.currentState || result.stateData) {
+          context = {
+            ...context,
+            currentState: result.nextState,
+            stateData: result.stateData || context.stateData,
+          };
           await this.db.updateUserState(
             message.internalUserId,
             result.nextState,
-            result.stateData
+            context.stateData
           );
         }
         responseText = result.response;
@@ -90,7 +96,7 @@ export class ConversationManager extends EventEmitter {
 
       this.emit("stateTransition", {
         userId: message.internalUserId,
-        fromState: context.currentState,
+        fromState: initialState,
         toState: context.currentState, // FIXME? // result.nextState,
         message: responseText,
         chatId: message.chatId,
