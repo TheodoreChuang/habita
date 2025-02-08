@@ -52,7 +52,7 @@ export class DatabaseService {
       data: {
         userId,
         state: "active",
-        messages: [message],
+        message: message,
       },
     });
   }

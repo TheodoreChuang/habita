@@ -5,6 +5,7 @@ CREATE TABLE "User" (
     "chatId" BIGINT NOT NULL,
     "username" TEXT,
     "currentState" TEXT,
+    "stateData" JSONB DEFAULT '{}',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
@@ -15,7 +16,7 @@ CREATE TABLE "Conversation" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "state" TEXT,
-    "messages" JSONB[],
+    "message" JSONB NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Conversation_pkey" PRIMARY KEY ("id")

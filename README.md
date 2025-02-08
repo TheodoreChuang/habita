@@ -198,7 +198,7 @@ erDiagram
         int id PK
         int user_id FK
         string state
-        jsonb messages
+        jsonb message
         timestamp created_at
     }
 
@@ -250,7 +250,7 @@ CREATE TABLE conversations (
     id TEXT PRIMARY KEY,
     user_id TEXT REFERENCES users,
     state TEXT,
-    messages JSONB[],
+    message JSONB,
     created_at TIMESTAMP DEFAULT NOW()
 );
 

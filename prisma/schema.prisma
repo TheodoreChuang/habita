@@ -24,7 +24,7 @@ model Conversation {
   id        String   @id @default(uuid())
   userId    String
   state     String?
-  messages  Json[]
+  message   Json
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 
