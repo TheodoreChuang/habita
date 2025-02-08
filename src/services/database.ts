@@ -52,10 +52,10 @@ export class DatabaseService {
           typeof conversation === "object" &&
           conversation !== null &&
           "text" in conversation &&
-          "userName" in conversation
+          "role" in conversation
       )
       .map((msg) => ({
-        userName: (msg as { userName: string }).userName,
+        role: (msg as { role: string }).role,
         content: (msg as { text: string }).text,
       }));
 

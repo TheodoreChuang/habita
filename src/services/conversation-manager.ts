@@ -95,6 +95,7 @@ export class ConversationManager extends EventEmitter {
 
           this.db.storeMessage(context.userId, {
             ...message,
+            role: "assistance",
             userName: "Habita",
             text: result.response,
           });

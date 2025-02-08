@@ -12,6 +12,7 @@ export interface TelegramConfig {
 export const MessageSchema = z.object({
   id: z.string(),
   chatId: z.number(),
+  role: z.string().optional(),
   text: z.string(),
   userId: z.number(), // This is the Telegram user ID
   userName: z.string().optional(),
@@ -101,6 +102,7 @@ export class TelegramService extends EventEmitter {
       return MessageSchema.parse({
         id: String(message.message_id),
         chatId: message.chat.id,
+        role: "user",
         text: message.text,
         userId: message.from?.id,
         userName: message.from?.username,

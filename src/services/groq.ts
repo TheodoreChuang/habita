@@ -31,9 +31,7 @@ export class GroqService {
       // Combine the history with the current messages
       const allUserMessages: ChatCompletionMessageParam[] = [
         ...msgs.map((msg) => ({
-          role: (msg.userName === "Habita" ? "assistance" : "user") as
-            | "user"
-            | "assistant",
+          role: msg.role as ChatCompletionMessageParam["role"],
           content: msg.content,
         })),
         ...messages,
@@ -69,7 +67,7 @@ export class GroqService {
     console.debug("GroqService.validateInput.response", response);
 
     // Parse the LLM's response to determine if the input is valid
-    // TODO improve validation
+    // TODO improve validation (eg. "not be directly related", "isn't related", "isn't quite relevant")
     const isValid = !response.toLowerCase().includes("invalid");
     return {
       isValid,
