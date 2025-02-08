@@ -18,17 +18,17 @@ npm run docker:up
 
 - Build healthier habits through consistent, small actions
 - Focus on behavioral change and accountability
-- Supportive and encouraging interaction style
+- Supportive and encouraging interactions
 - Regular check-ins and progress tracking
 - Iterative adjustment based on feedback
 
 ### Key Features
 
-- Initial lifestyle assessment
-- Personalized goal setting
-- Action planning and tracking
-- Regular check-ins via Telegram messages
-- Progress monitoring and adjustments
+- Initial lifestyle assessment (LLM-assisted)
+- Personalized goal setting (LLM-assisted)
+- Action planning and tracking (LLM-assisted)
+- Regular check-ins via Telegram messages (workflow)
+- Progress monitoring and adjustments (LLM-assisted)
 
 ### Focus Areas
 
@@ -45,23 +45,21 @@ npm run docker:up
 
    - Node.js with TypeScript
    - Background services for polling and scheduling
-   - Single process architecture
 
 2. Database
 
    - PostgreSQL
 
-3. External APIs
-   - Telegram Bot API
-   - LLM API (e.g., Groq) for response generation
+3. External SDKs
+   - Telegram Bot SDK
+   - LLM SDK (e.g., Groq)
 
 ### Key Libraries
 
-- `twitter-api-v2`: Twitter API client
+- `telegraf`: telegraf Bot SDK
+- `groq-sdk`: Groq SDK
 - `prisma`: Database ORM
 - `node-cron`: Task scheduling
-- `zod`: Type validation
-- `dotenv`: Environment configuration
 
 ## Entities & States
 
@@ -91,6 +89,7 @@ npm run docker:up
 
    - Specific tasks
    - Frequency
+   - Location if relevant (eg. HIIT workout at local gym)
    - Completion status
 
 5. Check-ins
@@ -117,6 +116,7 @@ npm run docker:up
    - Task definition
    - Frequency setting
    - Success criteria
+   - Guided by Habita
 
 4. Active Coaching
 
@@ -126,41 +126,7 @@ npm run docker:up
 
 5. Progress Review
    - Achievement assessment
-   - Pattern recognition
    - Plan adjustment
-
-#### Conversation States
-
-```typescript
-interface Command {
-  name: string;
-  handler: (msg: Message) => Promise<void>;
-  description: string;
-}
-
-const commands: Record<string, Command> = {
-  start: {
-    name: 'start',
-    description: 'Begin your health journey',
-    handler: async (msg) => {/* ... */}
-  },
-  goal: {
-    name: 'goal',
-    description: 'Set a new health goal',
-    handler: async (msg) => {/* ... */}
-  },
-  status: {
-    name: 'status',
-    description: 'Check your progress',
-    handler: async (msg) => {/* ... */}
-  },
-  help: {
-    name: 'help',
-    description: 'Show available commands',
-    handler: async (msg) => {/* ... */}
-  }
-};NextActions(): Promise<Action[]>;
-```
 
 ## Core Modules
 
@@ -222,7 +188,7 @@ erDiagram
 
     USERS {
         int id PK
-        string twitter_id
+        string Telegram_id
         string current_state
         int active_goal_id
         timestamp created_at
@@ -334,7 +300,7 @@ CREATE INDEX idx_progress_action_date ON progress(action_id, recorded_at);
 
 ```mermaid
 flowchart TD
-    U[User/Coachee] -->|DM| T[Twitter API]
+    U[User/Coachee] -->|DM| T[Telegram API]
     T -->|Poll| S[Server]
     S -->|Process| C[Conversation Manager]
     C -->|Get/Store| D[(Database)]
@@ -371,7 +337,7 @@ src/
 │   └── env.ts              # Environment configuration
 ├── services/
 │   ├── telegram.ts         # Telegram Bot integration
-│   ├── groq.ts              # Groq (LLM API) integration
+│   ├── groq.ts             # Groq (LLM API) integration
 │   ├── conversation.ts     # Conversation management
 │   └── coaching.ts         # Coaching logic
 ├── commands/               # Command handlers
@@ -392,7 +358,7 @@ process.on("unhandledRejection", (error: Error) => {
 // Service-level error handling
 class BaseService {
   protected async handleError(error: Error): Promise<void> {
-    if (error instanceof TwitterApiError) {
+    if (error instanceof TelegramApiError) {
       // Handle rate limits, retry
     } else if (error instanceof DatabaseError) {
       // Handle connection issues
