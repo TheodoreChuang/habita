@@ -56,8 +56,6 @@ class HabitaApp {
       "stateTransition",
       async (event: {
         userId: string; // This is now the UUID
-        fromState: ConversationState;
-        toState: ConversationState;
         message: string;
         chatId: number; // Add this to avoid looking up user again
       }) => {

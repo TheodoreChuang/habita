@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { JsonValue } from "@prisma/client/runtime/library";
 
 import { ConversationState } from "../types/states";
+import { ChatCompletionMessageParam } from "./groq";
 import { ParsedMessage } from "./telegram";
 
 export class DatabaseService {
@@ -46,18 +47,12 @@ export class DatabaseService {
     });
 
     // Extract messages from all conversations
-    const messages = conversations
-      .filter(
-        (conversation) =>
-          typeof conversation === "object" &&
-          conversation !== null &&
-          "text" in conversation &&
-          "role" in conversation
-      )
-      .map((msg) => ({
-        role: (msg as { role: string }).role,
-        content: (msg as { text: string }).text,
-      }));
+    const messages = conversations.map((conversation) => ({
+      role: (
+        conversation.message as { role: ChatCompletionMessageParam["role"] }
+      ).role,
+      content: (conversation.message as { text: string }).text,
+    }));
 
     return messages;
   }

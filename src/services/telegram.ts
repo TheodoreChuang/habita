@@ -60,9 +60,6 @@ export class TelegramService extends EventEmitter {
             parsedMessage.userName
           );
 
-          // Store message in conversation
-          await this.db.storeMessage(user.id, parsedMessage);
-
           // Emit message for other handlers
           this.emit(TelegramEvents.MESSAGE_RECEIVED, {
             ...parsedMessage,
