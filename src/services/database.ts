@@ -1,7 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { JsonValue } from "@prisma/client/runtime/library";
 
-import { ConversationState } from "../types/states";
 import { ChatCompletionMessageParam } from "./groq";
 import { ParsedMessage } from "./telegram";
 
@@ -20,22 +18,6 @@ export class DatabaseService {
         telegramId,
         chatId,
         username,
-        currentState: ConversationState.INITIAL_DISCOVERY,
-        stateData: {},
-      },
-    });
-  }
-
-  async updateUserState(
-    userId: string,
-    state: ConversationState,
-    stateData?: JsonValue
-  ) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        currentState: state,
-        stateData: stateData || {},
       },
     });
   }

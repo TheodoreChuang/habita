@@ -4,8 +4,6 @@ CREATE TABLE "User" (
     "telegramId" BIGINT NOT NULL,
     "chatId" BIGINT NOT NULL,
     "username" TEXT,
-    "currentState" TEXT,
-    "stateData" JSONB DEFAULT '{}',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
