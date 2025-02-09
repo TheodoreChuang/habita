@@ -33,7 +33,9 @@ export class DatabaseService {
       role: (
         conversation.message as { role: ChatCompletionMessageParam["role"] }
       ).role,
-      content: (conversation.message as { text: string }).text,
+      content: `${conversation.createdAt}: ${
+        (conversation.message as { text: string }).text
+      }`,
     }));
 
     return messages;
