@@ -6,7 +6,6 @@ import {
   ParsedMessage,
 } from "./services/telegram";
 import { ConversationManager } from "./services/conversation-manager";
-import { ConversationState } from "./types/states";
 
 dotenv.config();
 
@@ -38,11 +37,6 @@ class HabitaApp {
         try {
           console.log("Received message:", message);
 
-          if (message.command) {
-            await this.handleCommand(message);
-            return;
-          }
-
           await this.handleConversation(message);
         } catch (error) {
           console.error("Error handling message:", error);
@@ -53,7 +47,7 @@ class HabitaApp {
 
     // Handle conversation state transitions
     this.conversationManager.on(
-      "stateTransition",
+      "generatedResponse",
       async (event: {
         userId: string; // This is now the UUID
         message: string;
@@ -73,93 +67,12 @@ class HabitaApp {
     });
   }
 
-  private async handleCommand(message: ParsedMessage) {
-    switch (message.command) {
-      case "start": {
-        // Create/update user and get the internal UUID
-        const user = await this.db.createUser(
-          BigInt(message.userId),
-          BigInt(message.chatId),
-          message.userName
-        );
-
-        await this.db.updateUserState(
-          user.id, // Use the UUID
-          ConversationState.INITIAL_DISCOVERY,
-          { hasStarted: false }
-        );
-
-        await this.telegramService.sendMessage(
-          message.chatId,
-          "Welcome to Habita Health Coach! I'm here to help you build better health habits. Let's get started!"
-        );
-        break;
-      }
-
-      case "help":
-        await this.telegramService.sendMessage(
-          message.chatId,
-          `Available commands:
-            /start - Start or restart your health journey
-            /help - Show this message
-            /status - Check your current progress
-            /reset - Reset your conversation (use with caution)`
-        );
-
-      case "status": {
-        const user = await this.db.getUser(message.internalUserId);
-        if (user) {
-          const stateData = user.stateData as Record<string, any>;
-          let statusMessage = "Current Status:\n";
-          if (stateData.name) {
-            statusMessage += `Name: ${stateData.name}\n`;
-          }
-          if (stateData.goalArea) {
-            statusMessage += `Current Focus: ${stateData.goalArea}\n`;
-          }
-          if (stateData.specificGoal) {
-            statusMessage += `Goal: ${stateData.specificGoal}\n`;
-          }
-          await this.telegramService.sendMessage(message.chatId, statusMessage);
-        }
-        break;
-      }
-
-      case "reset":
-        await this.telegramService.sendMessage(
-          message.chatId,
-          "Are you sure you want to reset your conversation? Type 'YES' to confirm."
-        );
-        break;
-
-      default:
-        await this.telegramService.sendMessage(
-          message.chatId,
-          "Unknown command. Type /help to see available commands."
-        );
-    }
-  }
-
   private async handleConversation(message: ParsedMessage) {
     const user = await this.db.getUser(message.internalUserId);
     if (!user) {
       await this.telegramService.sendMessage(
         message.chatId,
         "Please start a new conversation with /start"
-      );
-      return;
-    }
-
-    // Special handling for reset confirmation
-    if (message.text.toUpperCase() === "YES") {
-      await this.db.updateUserState(
-        user.id, // Use the UUID
-        ConversationState.INITIAL_DISCOVERY,
-        { hasStarted: false }
-      );
-      await this.telegramService.sendMessage(
-        message.chatId,
-        "Conversation reset. Type /start to begin again."
       );
       return;
     }

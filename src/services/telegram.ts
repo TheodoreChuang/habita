@@ -16,7 +16,6 @@ export const MessageSchema = z.object({
   text: z.string(),
   userId: z.number(), // This is the Telegram user ID
   userName: z.string().optional(),
-  command: z.string().optional(),
   timestamp: z.date(),
   internalUserId: z.string().optional(), // Add this for the internal UUID
 });
@@ -84,14 +83,6 @@ export class TelegramService extends EventEmitter {
     });
   }
 
-  private extractCommand(text: string): string | undefined {
-    if (text.startsWith("/")) {
-      const command = text.split(" ")[0].substring(1);
-      return command;
-    }
-    return undefined;
-  }
-
   private convertMessageToParsedMessage(
     message: Message.TextMessage
   ): ParsedMessage | null {
@@ -103,7 +94,6 @@ export class TelegramService extends EventEmitter {
         text: message.text,
         userId: message.from?.id,
         userName: message.from?.username,
-        command: this.extractCommand(message.text),
         timestamp: new Date(message.date * 1000),
       });
     } catch (error) {

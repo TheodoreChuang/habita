@@ -37,17 +37,17 @@ export class ConversationManager extends EventEmitter {
 
       // Store message and bot response for memory
       await this.db.storeMessage(user.id, message);
+
+      await this.emit("generatedResponse", {
+        userId: user.id,
+        message: responseText,
+        chatId: message.chatId,
+      });
       await this.db.storeMessage(user.id, {
         ...message,
         role: "assistant",
         userName: "Habita",
         text: responseText,
-      });
-
-      this.emit("stateTransition", {
-        userId: user.id,
-        message: responseText,
-        chatId: message.chatId,
       });
     } catch (error) {
       console.error("Error in conversation manager:", error);
