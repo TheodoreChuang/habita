@@ -1,5 +1,35 @@
 # Technical Specifications
 
+## Implemented
+
+<details>
+    <summary><h3 style="display:inline-block">Hackathon POC</h3></summary>
+
+### Core Modules
+
+#### Message Handler
+
+- Polls Telegram
+- Processes incoming messages
+- Manages response queue
+- Handles threading
+
+#### Conversation Manager
+
+- Maintains conversation state
+- Processes user inputs
+- Manages context
+- Dynamic responses generation by LLM
+
+#### Integrations
+
+- Telegram
+- Groq
+
+</details>
+
+## Up Next
+
 <details>
     <summary><h3 style="display:inline-block">Conversation Summarization & Memory Optimization</h3></summary>
 
@@ -132,6 +162,40 @@ stateDiagram-v2
     ProgressReview --> ActionPlanning: Adjust Plan
     ActiveCoaching --> [*]: Goal Achieved
 ```
+
+### Core Entities
+
+1. Coach (Habita)
+
+   - Bot identity
+   - Coaching personality
+   - Command handlers
+   - Response patterns
+
+2. Coachee
+
+   - Telegram identity (userId, chatId)
+   - Current goals
+   - Progress metrics
+
+3. Goals
+
+   - Category
+   - Specific targets
+   - Timeline
+   - Status and priority
+
+4. Actions
+
+   - Specific tasks
+   - Frequency
+   - Location if relevant (eg. HIIT workout at local gym)
+   - Completion status
+
+5. Check-ins
+   - Scheduled time
+   - Response tracking
+   - Progress updates
 
 </details>
 
