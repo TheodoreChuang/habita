@@ -8,23 +8,34 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  telegramId    BigInt         @unique
-  chatId        BigInt
-  username      String?
-  createdAt     DateTime       @default(now())
-  conversations Conversation[]
+  id         String    @id @default(uuid())
+  telegramId BigInt    @unique
+  chatId     BigInt
+  username   String?
+  createdAt  DateTime  @default(now())
+  messages   Message[]
+  summaries  Summary[]
 
   @@index([telegramId])
 }
 
-model Conversation {
+model Message {
   id        String   @id @default(uuid())
   userId    String
-  state     String?
   message   Json
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Summary {
+  id           String   @id @default(uuid())
+  userId       String
+  summary      String   @db.Text  
+  trackedGoals Json     @default(dbgenerated("'[]'"))
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }

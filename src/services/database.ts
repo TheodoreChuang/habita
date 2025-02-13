@@ -23,22 +23,21 @@ export class DatabaseService {
   }
 
   async getConversationMessages(userId: string) {
-    const conversations = await this.prisma.conversation.findMany({
+    const messages = await this.prisma.message.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },
     });
 
-    // Extract messages from all conversations
-    const messages = conversations.map((conversation) => ({
+    const parsedMessages = messages.map((msg) => ({
       role: (
-        conversation.message as { role: ChatCompletionMessageParam["role"] }
+        msg.message as { role: ChatCompletionMessageParam["role"] }
       ).role,
-      content: `${conversation.createdAt}: ${
-        (conversation.message as { text: string }).text
+      content: `${msg.createdAt}: ${
+        (msg.message as { text: string }).text
       }`,
     }));
 
-    return messages;
+    return parsedMessages;
   }
 
   async getUser(userId?: string) {
@@ -50,10 +49,9 @@ export class DatabaseService {
   }
 
   async storeMessage(userId: string, message: ParsedMessage) {
-    return this.prisma.conversation.create({
+    return this.prisma.message.create({
       data: {
         userId,
-        state: "active",
         message: message,
       },
     });
