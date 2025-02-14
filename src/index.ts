@@ -5,14 +5,14 @@ import {
   TelegramEvents,
   ParsedMessage,
 } from "./services/telegram";
-import { ConversationManager } from "./services/conversation-manager";
+import { ConversationManagerService } from "./services/conversation-manager";
 
 dotenv.config();
 
 class HabitaApp {
   private db: DatabaseService;
   private telegramService: TelegramService;
-  private conversationManager: ConversationManager;
+  private conversationManager: ConversationManagerService;
 
   constructor() {
     if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -24,7 +24,7 @@ class HabitaApp {
       { botToken: process.env.TELEGRAM_BOT_TOKEN },
       this.db
     );
-    this.conversationManager = new ConversationManager(this.db);
+    this.conversationManager = new ConversationManagerService(this.db);
 
     this.setupEventHandlers();
   }

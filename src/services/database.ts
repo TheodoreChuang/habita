@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Message, User } from "@prisma/client";
 
-import { ChatCompletionMessageParam } from "./groq";
 import { ParsedMessage } from "./telegram";
 
 export class DatabaseService {
@@ -10,7 +9,11 @@ export class DatabaseService {
     this.prisma = new PrismaClient();
   }
 
-  async createUser(telegramId: bigint, chatId: bigint, username?: string) {
+  async createUser(
+    telegramId: bigint,
+    chatId: bigint,
+    username?: string
+  ): Promise<User> {
     return this.prisma.user.upsert({
       where: { telegramId },
       update: { chatId, username },
@@ -22,22 +25,23 @@ export class DatabaseService {
     });
   }
 
-  async getMessages({ userId, limit }: { userId: string; limit?: number }) {
-    const messages = await this.prisma.message.findMany({
+  async getMessages({
+    userId,
+    limit,
+    orderBy,
+  }: {
+    userId: string;
+    limit?: number;
+    orderBy?: "asc" | "desc";
+  }): Promise<Message[]> {
+    return await this.prisma.message.findMany({
       where: { userId },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: orderBy ?? "desc" },
       take: limit,
     });
-
-    const parsedMessages = messages.map((msg) => ({
-      role: (msg.message as { role: ChatCompletionMessageParam["role"] }).role,
-      content: `${msg.createdAt}: ${(msg.message as { text: string }).text}`,
-    }));
-
-    return parsedMessages;
   }
 
-  async getUser(userId?: string) {
+  async getUser(userId?: string): Promise<User | null> {
     if (!userId) return null;
 
     return this.prisma.user.findUnique({
@@ -45,7 +49,7 @@ export class DatabaseService {
     });
   }
 
-  async storeMessage(userId: string, message: ParsedMessage) {
+  async storeMessage(userId: string, message: ParsedMessage): Promise<Message> {
     return this.prisma.message.create({
       data: {
         userId,
@@ -54,7 +58,7 @@ export class DatabaseService {
     });
   }
 
-  async disconnect() {
+  async disconnect(): Promise<void> {
     await this.prisma.$disconnect();
   }
 }

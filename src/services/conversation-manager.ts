@@ -4,7 +4,7 @@ import { DatabaseService } from "./database";
 import { GroqService } from "./groq";
 import { ParsedMessage } from "./telegram";
 
-export class ConversationManager extends EventEmitter {
+export class ConversationManagerService extends EventEmitter {
   private groqService: GroqService;
 
   constructor(private db: DatabaseService) {
@@ -19,13 +19,14 @@ export class ConversationManager extends EventEmitter {
         throw new Error("User not found");
       }
 
-      // Fetch conversation history for better context
-      const conversationHistory = await this.db.getMessages({
+      // Fetch recent messages for better context
+      const recentMessages = await this.db.getMessages({
         userId: user.id,
       });
+      const parsedMessages = this.groqService.mapChatMessages(recentMessages);
 
       // Generate response using Groq with full conversation context
-      const responseText = await this.groqService.generateResponse(user.id, [
+      const responseText = await this.groqService.generateResponse([
         {
           role: "system",
           content: `
@@ -59,7 +60,7 @@ export class ConversationManager extends EventEmitter {
             - Keep responses short but **engaging**—use examples, analogies, and motivational insights.
           `,
         },
-        ...conversationHistory,
+        ...parsedMessages,
         { role: "user", content: message.text },
       ]);
 
