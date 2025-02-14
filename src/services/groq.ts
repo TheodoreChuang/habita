@@ -26,7 +26,7 @@ export class GroqService {
   ): Promise<string> {
     try {
       // Fetch conversation history from the database
-      const msgs = await this.db.getConversationMessages(userId);
+      const msgs = await this.db.getMessages({ userId });
 
       // Combine the history with the current messages
       const allUserMessages: ChatCompletionMessageParam[] = [

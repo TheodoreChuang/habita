@@ -20,9 +20,9 @@ export class ConversationManager extends EventEmitter {
       }
 
       // Fetch conversation history for better context
-      const conversationHistory = await this.db.getConversationMessages(
-        user.id
-      );
+      const conversationHistory = await this.db.getMessages({
+        userId: user.id,
+      });
 
       // Generate response using Groq with full conversation context
       const responseText = await this.groqService.generateResponse(user.id, [

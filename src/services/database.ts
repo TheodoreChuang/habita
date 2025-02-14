@@ -22,19 +22,16 @@ export class DatabaseService {
     });
   }
 
-  async getConversationMessages(userId: string) {
+  async getMessages({ userId, limit }: { userId: string; limit?: number }) {
     const messages = await this.prisma.message.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },
+      take: limit,
     });
 
     const parsedMessages = messages.map((msg) => ({
-      role: (
-        msg.message as { role: ChatCompletionMessageParam["role"] }
-      ).role,
-      content: `${msg.createdAt}: ${
-        (msg.message as { text: string }).text
-      }`,
+      role: (msg.message as { role: ChatCompletionMessageParam["role"] }).role,
+      content: `${msg.createdAt}: ${(msg.message as { text: string }).text}`,
     }));
 
     return parsedMessages;
