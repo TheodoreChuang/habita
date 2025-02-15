@@ -1,4 +1,4 @@
-import { PrismaClient, Message, User } from "@prisma/client";
+import { PrismaClient, Message, User, Summary } from "@prisma/client";
 
 import { ParsedMessage } from "./telegram";
 
@@ -29,12 +29,30 @@ export class DatabaseService {
     userId,
     limit,
     orderBy,
+    sinceDate,
   }: {
     userId: string;
     limit?: number;
     orderBy?: "asc" | "desc";
+    sinceDate?: Date;
   }): Promise<Message[]> {
     return await this.prisma.message.findMany({
+      where: { userId, createdAt: { gte: sinceDate } },
+      orderBy: { createdAt: orderBy ?? "desc" },
+      take: limit,
+    });
+  }
+
+  async getSummaries({
+    userId,
+    limit,
+    orderBy,
+  }: {
+    userId: string;
+    limit?: number;
+    orderBy?: "asc" | "desc";
+  }): Promise<Summary[]> {
+    return await this.prisma.summary.findMany({
       where: { userId },
       orderBy: { createdAt: orderBy ?? "desc" },
       take: limit,
@@ -55,6 +73,12 @@ export class DatabaseService {
         userId,
         message: message,
       },
+    });
+  }
+
+  async storeSummary(userId: string, summary: string): Promise<Summary> {
+    return this.prisma.summary.create({
+      data: { userId, summary },
     });
   }
 
