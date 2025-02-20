@@ -37,33 +37,32 @@
 
 - Prevent performance issues by **limiting message history** while keeping key insights.
 - Store **summaries of past conversations** to retain long-term context.
-- Ensure **tracked commitments** (e.g., "User plans to meditate daily") remain accessible.
 
 ### Summary Trigger Rules
 
 Summarization occurs when either condition is met:
 
-1. **50 messages exchanged** since the last summary.
-2. **21 days have passed** since the last summary.
+1. **N messages exchanged** since the last summary.
+2. ~~**N days have passed** since the last summary.~~
 
 Reasoning:
 
 - Users with **high message volume** get summarized frequently.
-- Users with **low engagement** still receive periodic summaries to prevent context loss.
+- ~~Users with **low engagement** still receive periodic summaries to prevent context loss.~~
 - This approach is **simple, conservative, and easy to adjust later**.
 
 ### Summary Storage & Retrieval
 
-- Summaries are stored in a separate `summaries` table.
+- Summaries are stored in a separate `Summary` table.
 - When sending context to the LLM, retrieve:
   - The **latest `N` messages** (raw history).
   - The **most recent summary**, but **exclude the latest `N` messages from it** to prevent redundancy.
 
 ### Database Schema
 
-#### Messages Table
+#### Message Table
 
-Currently the `Conversation` table but we may want to refactor this.
+_Formerly named the `Conversation` table._
 
 | Column      | Type            | Description                        |
 | ----------- | --------------- | ---------------------------------- |
@@ -73,15 +72,14 @@ Currently the `Conversation` table but we may want to refactor this.
 | `role`      | ENUM(user, bot) | Who sent the message               |
 | `timestamp` | TIMESTAMP       | When the message was sent          |
 
-#### Summaries Table
+#### Summary Table
 
-| Column          | Type      | Description                                |
-| --------------- | --------- | ------------------------------------------ |
-| `id`            | UUID (PK) | Unique identifier for the summary          |
-| `user_id`       | UUID (FK) | References `users` table                   |
-| `summary`       | TEXT      | AI-generated summary of past messages      |
-| `tracked_goals` | JSONB     | Structured data on user’s goals & progress |
-| `created_at`    | TIMESTAMP | When the summary was generated             |
+| Column       | Type      | Description                          |
+| ------------ | --------- | ------------------------------------ |
+| `id`         | UUID (PK) | Unique identifier for the summary    |
+| `user_id`    | UUID (FK) | References `users` table             |
+| `summary`    | TEXT      | AI-generated summary of past message |
+| `created_at` | TIMESTAMP | When the summary was generated       |
 
 </details>
 
@@ -90,6 +88,7 @@ Currently the `Conversation` table but we may want to refactor this.
 
 ### Goal
 
+- Ensure **tracked commitments** (e.g., "User plans to meditate daily") remain accessible.
 - Ensure users **stay accountable** with **habit-specific check-ins**.
 - Allow the **AI to track repeated actions** and adjust coaching based on progress.
 - Provide **flexibility** for users to manage check-in frequency and opt out if needed.

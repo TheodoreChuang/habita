@@ -40,7 +40,7 @@ export class SummaryService {
         content: `
           Identify the key points discussed in the conversation, including the user's goals, challenges, and progress. 
           Summarize the conversation between the user and the health coach, focusing on health-related topics and goals. 
-          Provide a brief summary (less than 100 words) of the conversation, highlighting the most important points.
+          Provide a brief summary (less than 200 words) of the conversation, highlighting the most important points.
           If unable to summarize, please respond with "Unable to summarize due to complexity of conversation history".
         `,
       },

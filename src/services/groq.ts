@@ -1,4 +1,4 @@
-import { Message } from "@prisma/client";
+import { Message, Summary } from "@prisma/client";
 import dotenv from "dotenv";
 import Groq from "groq-sdk";
 
@@ -28,7 +28,7 @@ export class GroqService {
       const response = await this.groq.chat.completions.create({
         model: "llama-3.3-70b-versatile", // Choose your model (Mixtral, Llama3, etc.)
         messages,
-        // max_completion_tokens: 32768,
+        max_completion_tokens: 1024,
       });
       return (
         response.choices?.[0]?.message?.content ||
@@ -40,12 +40,21 @@ export class GroqService {
     }
   }
 
-  mapChatMessages(messages: Message[]) {
+  mapChatMessages(messages: Message[]): ChatCompletionMessageParam[] {
     return messages
       .map((msg) => ({
         role: (msg.message as { role: ChatCompletionMessageParam["role"] })
           .role,
         content: `${msg.createdAt}: ${(msg.message as { text: string }).text}`,
+      }))
+      .reverse();
+  }
+
+  mapChatSummaries(summaries: Summary[]): ChatCompletionMessageParam[] {
+    return summaries
+      .map((summary) => ({
+        role: "assistant" as ChatCompletionMessageParam["role"],
+        content: `${summary.createdAt}: ${summary.summary}`,
       }))
       .reverse();
   }

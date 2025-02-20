@@ -1,6 +1,6 @@
 {
   "name": "habita-health-coach",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "habita: your AI health coach",
   "scripts": {
     "start": "ts-node src/index.ts",
