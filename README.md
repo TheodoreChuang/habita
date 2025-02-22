@@ -2,11 +2,15 @@
 
 ## Getting Started
 
+### Initial Setup
+
 ```bash
 cp .env.example .env
 
 npm install
 ```
+
+### Running the Application
 
 ```bash
 npm run docker:up
