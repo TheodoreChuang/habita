@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Message, User, Summary } from "@prisma/client";
 
-import { ChatCompletionMessageParam } from "./groq";
 import { ParsedMessage } from "./telegram";
 
 export class DatabaseService {
@@ -10,7 +9,11 @@ export class DatabaseService {
     this.prisma = new PrismaClient();
   }
 
-  async createUser(telegramId: bigint, chatId: bigint, username?: string) {
+  async createUser(
+    telegramId: bigint,
+    chatId: bigint,
+    username?: string
+  ): Promise<User> {
     return this.prisma.user.upsert({
       where: { telegramId },
       update: { chatId, username },
@@ -22,25 +25,41 @@ export class DatabaseService {
     });
   }
 
-  async getConversationMessages(userId: string) {
-    const messages = await this.prisma.message.findMany({
-      where: { userId },
-      orderBy: { createdAt: "asc" },
+  async getMessages({
+    userId,
+    limit,
+    orderBy,
+    sinceDate,
+  }: {
+    userId: string;
+    limit?: number;
+    orderBy?: "asc" | "desc";
+    sinceDate?: Date;
+  }): Promise<Message[]> {
+    return await this.prisma.message.findMany({
+      where: { userId, createdAt: { gte: sinceDate } },
+      orderBy: { createdAt: orderBy ?? "desc" },
+      take: limit,
     });
-
-    const parsedMessages = messages.map((msg) => ({
-      role: (
-        msg.message as { role: ChatCompletionMessageParam["role"] }
-      ).role,
-      content: `${msg.createdAt}: ${
-        (msg.message as { text: string }).text
-      }`,
-    }));
-
-    return parsedMessages;
   }
 
-  async getUser(userId?: string) {
+  async getSummaries({
+    userId,
+    limit,
+    orderBy,
+  }: {
+    userId: string;
+    limit?: number;
+    orderBy?: "asc" | "desc";
+  }): Promise<Summary[]> {
+    return await this.prisma.summary.findMany({
+      where: { userId },
+      orderBy: { createdAt: orderBy ?? "desc" },
+      take: limit,
+    });
+  }
+
+  async getUser(userId?: string): Promise<User | null> {
     if (!userId) return null;
 
     return this.prisma.user.findUnique({
@@ -48,7 +67,7 @@ export class DatabaseService {
     });
   }
 
-  async storeMessage(userId: string, message: ParsedMessage) {
+  async storeMessage(userId: string, message: ParsedMessage): Promise<Message> {
     return this.prisma.message.create({
       data: {
         userId,
@@ -57,7 +76,13 @@ export class DatabaseService {
     });
   }
 
-  async disconnect() {
+  async storeSummary(userId: string, summary: string): Promise<Summary> {
+    return this.prisma.summary.create({
+      data: { userId, summary },
+    });
+  }
+
+  async disconnect(): Promise<void> {
     await this.prisma.$disconnect();
   }
 }

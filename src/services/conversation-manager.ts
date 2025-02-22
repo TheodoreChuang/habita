@@ -2,14 +2,17 @@ import { EventEmitter } from "events";
 
 import { DatabaseService } from "./database";
 import { GroqService } from "./groq";
+import { SummaryService } from "./summary";
 import { ParsedMessage } from "./telegram";
 
-export class ConversationManager extends EventEmitter {
+export class ConversationManagerService extends EventEmitter {
   private groqService: GroqService;
+  private summaryService: SummaryService;
 
   constructor(private db: DatabaseService) {
     super();
     this.groqService = new GroqService(db);
+    this.summaryService = new SummaryService(db, this.groqService);
   }
 
   async handleMessage(message: ParsedMessage): Promise<void> {
@@ -19,13 +22,23 @@ export class ConversationManager extends EventEmitter {
         throw new Error("User not found");
       }
 
-      // Fetch conversation history for better context
-      const conversationHistory = await this.db.getConversationMessages(
-        user.id
-      );
+      const [lastestSummary] = await this.db.getSummaries({
+        userId: user.id,
+        limit: 1,
+        orderBy: "desc",
+      });
+      const newMessages = await this.db.getMessages({
+        userId: user.id,
+        sinceDate: lastestSummary?.createdAt,
+      });
+
+      const conservationContext = [
+        ...this.groqService.mapChatSummaries([lastestSummary]),
+        ...this.groqService.mapChatMessages(newMessages),
+      ];
 
       // Generate response using Groq with full conversation context
-      const responseText = await this.groqService.generateResponse(user.id, [
+      const responseText = await this.groqService.generateResponse([
         {
           role: "system",
           content: `
@@ -59,24 +72,26 @@ export class ConversationManager extends EventEmitter {
             - Keep responses short but **engaging**—use examples, analogies, and motivational insights.
           `,
         },
-        ...conversationHistory,
+        ...conservationContext,
         { role: "user", content: message.text },
       ]);
 
       // Store message and bot response for memory
       await this.db.storeMessage(user.id, message);
-
-      await this.emit("generatedResponse", {
-        userId: user.id,
-        message: responseText,
-        chatId: message.chatId,
-      });
       await this.db.storeMessage(user.id, {
         ...message,
         role: "assistant",
         userName: "Habita",
         text: responseText,
       });
+
+      await this.emit("generatedResponse", {
+        userId: user.id,
+        message: responseText,
+        chatId: message.chatId,
+      });
+
+      await this.summaryService.checkAndSummarize(user.id);
     } catch (error) {
       console.error("Error in conversation manager:", error);
       this.emit("error", error);
