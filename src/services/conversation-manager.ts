@@ -37,8 +37,6 @@ export class ConversationManagerService extends EventEmitter {
         ...this.groqService.mapChatMessages(newMessages),
       ];
 
-      console.log("conservationContext::\n", conservationContext);
-
       // Generate response using Groq with full conversation context
       const responseText = await this.groqService.generateResponse([
         {
