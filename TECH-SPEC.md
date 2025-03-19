@@ -93,6 +93,14 @@ _Formerly named the `Conversation` table._
 - Allow the **AI to track repeated actions** and adjust coaching based on progress.
 - Provide **flexibility** for users to manage check-in frequency or abandon a goal.
 
+### Tracking Progress & Repeated Actions
+
+This enables future features like:
+
+- Adaptive coaching (suggesting easier actions if struggles continue).
+- Visualizing progress (graphs, streaks, trends).
+- Gamification (streak rewards, badges).
+
 ### Check-in Frequency Rules
 
 - **Users specify check-in frequency**, guided by the coach.
@@ -105,7 +113,7 @@ _Formerly named the `Conversation` table._
 |------------|------------------|
 | **Daily habits** (e.g., “Eat 20g of protein at breakfast”) | **Daily** |
 | **Frequent habits** (e.g., “Drink water every hour while awake”) | **Multiple times per day** (up to 2 max) |
-| **Scheduled habits** (e.g., “Exercise 3 times a week”) | **Every 2-3 days** |
+| **Scheduled habits** (e.g., “Exercise 3 times a week on Monday, Wednesday, Friday”) | **Every 2-3 days** |
 
 **Edge Case Handling:**
 
@@ -115,63 +123,71 @@ _Formerly named the `Conversation` table._
 ### Handling Missed Check-ins
 
 - If a user **doesn’t respond**, the coach will **continue at the same frequency**.
+- If a user **misses 5 consecutive check-ins**, the AI will marked the goal as "abandoned" and stop checking in.
 - If a user **proactively provides an update**, the next scheduled check-in **may be canceled**.
   - If a user sends an explicit progress update, cancel the next check-in. Otherwise, continue with next check-in.
-- If a user **misses 5 consecutive check-ins**, the AI will **suggest adjusting the goal** to be more achievable.
+
+### Adjusting Goals
+
+- If a user fails X check-ins (e.g. after 5 check-in, complete rate less than 80%), the AI will **suggest adjusting the goal** to be more achievable.
   - AI will confirm with the user before adjusting the goal.
-
-### Tracking Progress & Repeated Actions
-
-This enables future features like:
-
-- Adaptive coaching (suggesting easier actions if struggles continue).
-- Visualizing progress (graphs, streaks, trends).
-- Gamification (streak rewards, badges).
+  - If adjusted, abandoned the current goal and create a new one.
 
 ### Completing a Goal
 
-- Goals are automatically completed when:
-  - the goal's end date is reached and,
-  - the user has checked in the required number of times (e.g. 80% of the total check-ins).
+- Goals are considered completed when the goal's target end date is reached.
 
 ### Abandoning a Goal
 
-- Users can abandon a goal and stop all its check-ins with a command (e.g., /stop_goal [goal_description]).
+- Users can abandon a goal and stop all its check-ins.
 
 ### Database Schema
 
 #### Goals Table
 
-| Column        | Type                                    | Description                                     |
-| ------------- | --------------------------------------- | ----------------------------------------------- |
-| `id`          | UUID (PK)                               | Unique identifier for goal                      |
-| `user_id`     | UUID (FK)                               | References `users` table                        |
-| `description` | TEXT                                    | Goal description (e.g., “Drink 2L water daily”) |
-| `created_at`  | TIMESTAMP DEFAULT now()                 | When the goal was created                       |
-| `end_date`    | TIMESTAMP                               | Target completion date                          |
-| `frequency`   | ENUM(daily, every_2_days, every_3_days) | How often to check in                           |
-| `status`      | ENUM(active, completed, abandoned)      | Current goal status                             |
+| Column            | Type                               | Description                                     |
+| ----------------- | ---------------------------------- | ----------------------------------------------- |
+| `id`              | UUID (PK)                          | Unique identifier for goal                      |
+| `user_id`         | UUID (FK)                          | References `users` table                        |
+| `description`     | TEXT                               | Goal description (e.g., “Drink 2L water daily”) |
+| `created_at`      | TIMESTAMP DEFAULT now()            | When the goal was created                       |
+| `target_end_date` | TIMESTAMP                          | Target end date                                 |
+| `actuaL_end_date` | TIMESTAMP                          | Actual end date (completed or abandoned)        |
+| `frequency`       | ENUM(DAYS_1, DAYS_2, DAYS_3)       | How often to check in                           |
+| `status`          | ENUM(ACTIVE, COMPLETED, ABANDONED) | Current goal status                             |
 
-#### Check-ins Table
+Status:
+
+- Active: Ongoing check-ins and tracking.
+- Completed: Reached target end date. Stop check-ins and tracking.
+- Abandoned: Ended before target end date. Stop check-ins and tracking.
+
+#### Check-ins Ledger Table
 
 | Column          | Type                    | Description                         |
 | --------------- | ----------------------- | ----------------------------------- |
 | `id`            | UUID (PK)               | Unique identifier for check-in      |
 | `user_id`       | UUID (FK)               | References `users` table            |
 | `goal_id`       | UUID (FK)               | References `goals` table            |
-| `created_at`    | TIMESTAMP DEFAULT now() | When the goal was created           |
+| `created_at`    | TIMESTAMP DEFAULT now() | When the check-in was created       |
 | `next_check_in` | TIMESTAMP               | When the next check-in will be sent |
 
-#### Progress Tracking Table
+#### Progress Tracking Ledger Table
 
-| Column        | Type                    | Description                          |
-| ------------- | ----------------------- | ------------------------------------ |
-| `id`          | UUID (PK)               | Unique identifier for progress entry |
-| `user_id`     | UUID (FK)               | References `users` table             |
-| `goal_id`     | UUID (FK)               | References `goals` table             |
-| `check_in_id` | UUID (FK)               | References `check-ins` table         |
-| `date`        | TIMESTAMP               | When the progress was recorded       |
-| `status`      | ENUM(completed, missed) | Whether the action was completed     |
+| Column        | Type                            | Description                          |
+| ------------- | ------------------------------- | ------------------------------------ |
+| `id`          | UUID (PK)                       | Unique identifier for progress entry |
+| `user_id`     | UUID (FK)                       | References `users` table             |
+| `goal_id`     | UUID (FK)                       | References `goals` table             |
+| `check_in_id` | UUID (FK)                       | References `check-ins` table         |
+| `created_at`  | TIMESTAMP                       | When the progress was recorded       |
+| `status`      | ENUM(COMPLETED, FAILED, MISSED) | Progress status                      |
+
+Status:
+
+- Completed: User response and notes goal action was completed.
+- Failed: User response and notes goal action was not completed.
+- Missed: User does not response, unable to track progress.
 
 <details>
   <summary><h4 style="display:inline-block">Database ERD</h4></summary>
@@ -197,13 +213,14 @@ This enables future features like:
             UUID id PK
             UUID user_id FK "References USER"
             TEXT description "Goal description"
-            ENUM frequency "daily, every_2_days, every_3_days"
+            ENUM frequency "DAYS_1, DAYS_2, DAYS_3"
             TIMESTAMP created_at "When the goal was created"
-            TIMESTAMP end_date "Optional target completion date"
-            ENUM status "active, completed, abandoned"
+            TIMESTAMP target_completion_date "Optional target completion date"
+            TIMESTAMP actuaL_end_date "Optional end date"
+            ENUM status "ACTIVE, COMPLETED, ABANDONED"
         }
 
-        CHECK_IN {
+        CHECK_IN_LEDGER {
             UUID id PK
             UUID user_id FK "References USER"
             UUID goal_id FK "References GOAL"
@@ -211,13 +228,13 @@ This enables future features like:
             TIMESTAMP created_at "When this check-in record was created"
         }
 
-        PROGRESS_TRACKING {
+        PROGRESS_TRACKING_LEDGER {
             UUID id PK
             UUID user_id FK "References USER"
             UUID goal_id FK "References GOAL"
             UUID check_in_id FK "References CHECK_IN"
             TIMESTAMP date "When the progress was recorded"
-            ENUM status "completed, missed"
+            ENUM status "COMPLETED, FAILED, MISSED"
         }
       ```
 
@@ -283,14 +300,14 @@ Why CRON?
 
       Bot->>User: How often should I check in? (Max: twice per day, Min: every 3 days)
       User->>Bot: Daily
-      Bot->>Database: Schedule check-ins in `check_ins` table
+      Bot->>Database: Schedule check-ins in `check_ins_ledger` table
       Database->>Bot: Check-ins scheduled
 
       Note over User,Bot: Check-in Phase Begins
 
       Bot->>User: Did you sleep 8 hours last night?
       User->>Bot: Yes!
-      Bot->>Database: Log progress as "completed" in `progress_tracking`
+      Bot->>Database: Log progress as "completed" in `progress_tracking_ledger`
 
       Bot->>User: Great job! Keep it up!
 
